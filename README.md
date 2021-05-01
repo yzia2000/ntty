@@ -2,7 +2,8 @@
 Neovim terminal manager that exceeds expectations.
 
 ## Installation
-ntty requires sqlite and sql.nvim to store keybindings.
+ntty requires sqlite and [sql.nvim](https://www.github.com/tami5/sql.nvim) to store keybindings. Follow
+instructions at [sql.nvim](https://www.github.com/tami5/sql.nvim).
 
 ## Usage
 ### Open/find terminal
