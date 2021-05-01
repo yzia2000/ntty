@@ -22,3 +22,6 @@ lua require('ntty.term').sendCommand(3, 'npm run start\n')
 ```
 lua require('ntty.term').sendCommand(3)
 ```
+
+--------------------------
+term.lua adapted from [harpoon](https://github.com/ThePrimeagen/harpoon)
