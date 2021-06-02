@@ -1,5 +1,5 @@
 # ntty
-Neovim terminal manager that does somethings well (pronounced en-tee-tee).
+Neovim terminal manager that does somethings well (pronounced entity).
 
 ## Installation
 ntty requires sqlite and [sql.nvim](https://www.github.com/tami5/sql.nvim) to store keybindings. Follow

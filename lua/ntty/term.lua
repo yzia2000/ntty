@@ -2,7 +2,7 @@ sql = require('sql')
 
 local M = {}
 local terminals = {}
-local previous_bfnr;
+local previous_bfnr
 
 local function create_terminal()
   local current_id = vim.fn.bufnr()
@@ -28,7 +28,7 @@ end
 function find_terminal(idx)
   local current_id = vim.fn.bufnr()
   if vim.api.nvim_buf_get_option(current_id, 'buftype') ~= "terminal" then
-    previous_bfnr = current_id;
+    previous_bfnr = current_id
   end
 
   local term_handle = terminals[idx]
@@ -54,7 +54,15 @@ M.gotoTerminal = function(idx)
 end
 
 M.switch_back = function()
-  vim.api.nvim_set_current_buf(previous_bfnr);
+  local current_id = vim.fn.bufnr()
+  if vim.api.nvim_buf_get_option(current_id, 'buftype') ~= "terminal" then
+    vim.api.nvim_exec('b#', true)
+    if vim.api.nvim_buf_get_option(vim.fn.bufnr(), 'buftype') == "terminal" then
+      vim.api.nvim_exec('b#', true)
+    end
+    return
+  end
+  vim.api.nvim_set_current_buf(previous_bfnr)
 end
 
 function prevCommand(idx)
@@ -62,7 +70,7 @@ function prevCommand(idx)
     return db:eval([[select cmd 
     from termbinds 
     where termid = ? and ? like dir||'%' 
-    order by length(dir) 
+    order by length(dir) desc
     limit 1]], {idx, vim.api.nvim_exec('pwd', true)})
   end)
 
@@ -74,25 +82,27 @@ function prevCommand(idx)
   end
 end
 
-M.sendCommand = function(idx, cmd, ...)
+M.sendCommand = function(idx, save, cmd, ...)
   local term_handle = find_terminal(idx)
 
   if cmd then
-    sql.with_open(os.getenv('HOME').."/.cache/nvim/nvim_term_bindings.sqlite3", function(db)
-      db:eval([[create table if not exists termbinds (
-      dir varchar(20),
-      termid int,
-      cmd varchar(50),
-      primary key(dir, termid)
-      )]])
-      db:eval("insert or replace into termbinds values(?, ?, ?)", {vim.api.nvim_exec('pwd', true),  idx,  cmd});
-    end)
+    if save == true then
+      sql.with_open(os.getenv('HOME').."/.cache/nvim/nvim_term_bindings.sqlite3", function(db)
+        db:eval([[create table if not exists termbinds (
+        dir varchar(20),
+        termid int,
+        cmd varchar(50),
+        primary key(dir, termid)
+        )]])
+        db:eval("insert or replace into termbinds values(?, ?, ?)", {vim.api.nvim_exec('pwd', true),  idx,  cmd})
+      end)
+    end
   else
     cmd = prevCommand(idx)
   end
 
   if cmd then
-    vim.fn.chansend(term_handle.term_id, string.format(cmd, ...))
+    vim.fn.chansend(term_handle.term_id, string.format('\x03'..cmd..'\n', ...))
   end
 end
 
