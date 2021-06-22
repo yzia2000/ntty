@@ -27,6 +27,7 @@ end
 
 function find_terminal(idx)
   local current_id = vim.fn.bufnr()
+  local terminal_exists = false
   if vim.api.nvim_buf_get_option(current_id, 'buftype') ~= "terminal" then
     previous_bfnr = current_id
   end
@@ -43,8 +44,10 @@ function find_terminal(idx)
       term_id = term_id
     }
     terminals[idx] = term_handle
+  else
+    terminal_exists = true
   end
-  return term_handle
+  return term_handle, terminal_exists
 end
 
 M.gotoTerminal = function(idx)
@@ -83,7 +86,7 @@ function prevCommand(idx)
 end
 
 M.sendCommand = function(idx, save, cmd, ...)
-  local term_handle = find_terminal(idx)
+  local term_handle, terminal_exists = find_terminal(idx)
 
   if cmd then
     if save == true then
@@ -102,7 +105,10 @@ M.sendCommand = function(idx, save, cmd, ...)
   end
 
   if cmd then
-    vim.fn.chansend(term_handle.term_id, string.format('\x03'..cmd..'\n', ...))
+    if terminal_exists then
+      vim.fn.chansend(term_handle.term_id, '\x03 ')
+    end
+    vim.fn.chansend(term_handle.term_id, string.format(cmd..'\n', ...))
   end
 end
 
