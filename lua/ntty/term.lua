@@ -78,7 +78,6 @@ function PrevCommand(idx)
   end)
 
   if type(cmd) == "boolean"then
-    print('No command found in history')
     return nil, nil
   else
     return cmd[1].dir, cmd[1].cmd
@@ -99,7 +98,11 @@ end
 
 M.sendCommand = function(idx, save)
   local dir, cmd = PrevCommand(idx)
-  cmd = vim.fn.input("Enter command ["..cmd.."]: ", "", "shellcmd")
+  if cmd then
+    cmd = vim.fn.input("Enter command ["..cmd.."]: ", "", "shellcmd")
+  else
+    cmd = vim.fn.input("Enter command: ", "", "shellcmd")
+  end
   local term_handle, terminal_exists = FindTerminal(idx)
 
   if save == true then
