@@ -1,4 +1,4 @@
-sql = require('sql')
+sql = require('sqlite')
 
 local M = {}
 local terminals = {}
@@ -25,7 +25,7 @@ local function create_terminal()
   return buf_id, term_id
 end
 
-function find_terminal(idx)
+function FindTerminal(idx)
   local current_id = vim.fn.bufnr()
   local terminal_exists = false
   if vim.api.nvim_buf_get_option(current_id, 'buftype') ~= "terminal" then
@@ -51,7 +51,7 @@ function find_terminal(idx)
 end
 
 M.gotoTerminal = function(idx)
-  local term_handle = find_terminal(idx)
+  local term_handle = FindTerminal(idx)
 
   vim.api.nvim_set_current_buf(term_handle.buf_id)
 end
@@ -63,14 +63,14 @@ M.switch_back = function()
     if vim.api.nvim_buf_get_option(vim.fn.bufnr(), 'buftype') == "terminal" then
       vim.api.nvim_exec('b#', true)
     end
-    return
+  else
+    vim.api.nvim_set_current_buf(previous_bfnr)
   end
-  vim.api.nvim_set_current_buf(previous_bfnr)
 end
 
-function prevCommand(idx)
+function PrevCommand(idx)
   local cmd =  sql.with_open(os.getenv('HOME')..'/.cache/nvim/nvim_term_bindings.sqlite3', function(db)
-    return db:eval([[select cmd 
+    return db:eval([[select dir, cmd 
     from termbinds 
     where termid = ? and ? like dir||'%' 
     order by length(dir) desc
@@ -79,36 +79,49 @@ function prevCommand(idx)
 
   if type(cmd) == "boolean"then
     print('No command found in history')
-    return nil
+    return nil, nil
   else
-    return cmd[1].cmd
+    return cmd[1].dir, cmd[1].cmd
   end
 end
 
-M.sendCommand = function(idx, save, cmd, ...)
-  local term_handle, terminal_exists = find_terminal(idx)
+function SaveCommand(idx, cmd)
+  sql.with_open(os.getenv('HOME').."/.cache/nvim/nvim_term_bindings.sqlite3", function(db)
+    db:eval([[create table if not exists termbinds (
+    dir varchar(20),
+    termid int,
+    cmd varchar(50),
+    primary key(dir, termid)
+    )]])
+    db:eval("insert or replace into termbinds values(?, ?, ?)", {vim.api.nvim_exec('pwd', true),  idx,  cmd})
+  end)
+end
 
-  if cmd then
-    if save == true then
-      sql.with_open(os.getenv('HOME').."/.cache/nvim/nvim_term_bindings.sqlite3", function(db)
-        db:eval([[create table if not exists termbinds (
-        dir varchar(20),
-        termid int,
-        cmd varchar(50),
-        primary key(dir, termid)
-        )]])
-        db:eval("insert or replace into termbinds values(?, ?, ?)", {vim.api.nvim_exec('pwd', true),  idx,  cmd})
-      end)
-    end
-  else
-    cmd = prevCommand(idx)
+M.sendCommand = function(idx, save)
+  local dir, cmd = PrevCommand(idx)
+  cmd = vim.fn.input("Enter command ["..cmd.."]: ", "", "shellcmd")
+  local term_handle, terminal_exists = FindTerminal(idx)
+
+  if save == true then
+    dir = "."
+    SaveCommand(idx, cmd)
   end
 
-  if cmd then
-    if terminal_exists then
-      vim.fn.chansend(term_handle.term_id, '\x03 ')
+  if terminal_exists then
+    vim.fn.chansend(term_handle.term_id, '\x03 ')
+  end
+  vim.fn.chansend(term_handle.term_id, string.format('(cd '..dir..' && '..cmd..')\n'))
+end
+
+M.sendPreviousCommand = function(idx)
+  local dir, cmd = PrevCommand(idx)
+
+  if cmd and dir then
+    local termHandle, terminalExists = FindTerminal(idx)
+    if terminalExists then
+      vim.fn.chansend(termHandle.term_id, '\x03 ')
     end
-    vim.fn.chansend(term_handle.term_id, string.format(cmd..'\n', ...))
+    vim.fn.chansend(termHandle.term_id, string.format('(cd '..dir..' && '..cmd..')\n'))
   end
 end
 
