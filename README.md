@@ -16,11 +16,15 @@ lua require('ntty.term').switch_back()
 ```
 ### Send job to terminal and store it in the db
 ```
-lua require('ntty.term').sendCommand(3, 'npm run start\n')
+lua require('ntty.term').sendCommand(3, true)
+```
+### Send job to terminal and without storing in db
+```
+lua require('ntty.term').sendCommand(3, false)
 ```
 ### Call previous command called in directory or subdirectories.
 ```
-lua require('ntty.term').sendCommand(3)
+lua require('ntty.term').sendPreviousCommand(3)
 ```
 
 --------------------------
