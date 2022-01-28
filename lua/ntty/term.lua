@@ -96,6 +96,13 @@ function SaveCommand(idx, cmd)
   end)
 end
 
+function RunCommand(term_id, dir, cmd, terminal_exists)
+  if terminal_exists then
+    vim.fn.chansend(term_id, '\x03 ')
+  end
+  vim.fn.chansend(term_id, string.format('(cd '..dir..'; '..cmd..'; notify-send "'..cmd:gsub('"', "'")..'" "Task ended with status $(echo $?)")\n'))
+end
+
 M.sendCommand = function(idx, save)
   local dir, cmd = PrevCommand(idx)
   if cmd then
@@ -109,11 +116,7 @@ M.sendCommand = function(idx, save)
     dir = "."
     SaveCommand(idx, cmd)
   end
-
-  if terminal_exists then
-    vim.fn.chansend(term_handle.term_id, '\x03 ')
-  end
-  vim.fn.chansend(term_handle.term_id, string.format('(cd '..dir..' && '..cmd..')\n'))
+  RunCommand(term_handle.term_id, dir, cmd, terminal_exists)
 end
 
 M.sendPreviousCommand = function(idx)
@@ -121,10 +124,7 @@ M.sendPreviousCommand = function(idx)
 
   if cmd and dir then
     local termHandle, terminalExists = FindTerminal(idx)
-    if terminalExists then
-      vim.fn.chansend(termHandle.term_id, '\x03 ')
-    end
-    vim.fn.chansend(termHandle.term_id, string.format('(cd '..dir..' && '..cmd..')\n'))
+    RunCommand(termHandle.term_id, dir, cmd, terminalExists)
   end
 end
 
